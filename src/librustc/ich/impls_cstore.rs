@@ -71,16 +71,3 @@ impl<HCX> HashStable<HCX> for middle::cstore::ExternBodyNestedBodies {
         fingerprint.hash_stable(hcx, hasher);
     }
 }
-
-impl<'a, HCX> HashStable<HCX> for middle::cstore::ExternConstBody<'a> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut HCX,
-                                          hasher: &mut StableHasher<W>) {
-        let middle::cstore::ExternConstBody {
-            body: _,
-            fingerprint,
-        } = *self;
-
-        fingerprint.hash_stable(hcx, hasher);
-    }
-}
