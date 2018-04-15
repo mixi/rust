@@ -420,20 +420,23 @@ pub struct TargetOptions {
     /// Linker to invoke
     pub linker: Option<String>,
 
-    /// Linker arguments that are unconditionally passed *before* any
-    /// user-defined libraries.
-    pub pre_link_args: LinkArgs,
+    /// Linker arguments that are passed *before* any user-defined libraries.
+    pub pre_link_args: LinkArgs, // ... unconditionally
+    pub pre_link_args_crt: LinkArgs, // ... with included-crt enabled
     /// Objects to link before all others, always found within the
     /// sysroot folder.
     pub pre_link_objects_exe: Vec<String>, // ... when linking an executable
     pub pre_link_objects_dll: Vec<String>, // ... when linking a dylib
+    pub pre_link_objects_exe_crt: Vec<String>, // ... when linking an executable with included-crt
+                                               // enabled
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post_link_objects.  Standard platform
     /// libraries that should be always be linked to, usually go here.
     pub late_link_args: LinkArgs,
     /// Objects to link after all others, always found within the
     /// sysroot folder.
-    pub post_link_objects: Vec<String>,
+    pub post_link_objects: Vec<String>, // ... unconditionally
+    pub post_link_objects_crt: Vec<String>, // ... with included-crt enabled
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
@@ -578,6 +581,11 @@ pub struct TargetOptions {
     /// Whether or not crt-static is respected by the compiler (or is a no-op).
     pub crt_static_respected: bool,
 
+    /// Whether or not the CRT can be replaced with an included one.
+    pub crt_included_default: bool,
+    /// Whether or not the included-crt is respected by the compiler (or is a no-op).
+    pub crt_included_respected: bool,
+
     /// Whether or not stack probes (__rust_probestack) are enabled
     pub stack_probes: bool,
 
@@ -633,6 +641,7 @@ impl Default for TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             pre_link_args: LinkArgs::new(),
+            pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
             cpu: "generic".to_string(),
@@ -667,7 +676,9 @@ impl Default for TargetOptions {
             relro_level: RelroLevel::None,
             pre_link_objects_exe: Vec::new(),
             pre_link_objects_dll: Vec::new(),
+            pre_link_objects_exe_crt: Vec::new(),
             post_link_objects: Vec::new(),
+            post_link_objects_crt: Vec::new(),
             late_link_args: LinkArgs::new(),
             link_env: Vec::new(),
             archive_format: "gnu".to_string(),
@@ -684,6 +695,8 @@ impl Default for TargetOptions {
             crt_static_allows_dylibs: false,
             crt_static_default: false,
             crt_static_respected: false,
+            crt_included_default: false,
+            crt_included_respected: false,
             stack_probes: false,
             min_global_align: None,
             default_codegen_units: None,
@@ -886,10 +899,13 @@ impl Target {
         key!(is_builtin, bool);
         key!(linker, optional);
         key!(pre_link_args, link_args);
+        key!(pre_link_args_crt, link_args);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);
+        key!(pre_link_objects_exe_crt, list);
         key!(late_link_args, link_args);
         key!(post_link_objects, list);
+        key!(post_link_objects_crt, list);
         key!(post_link_args, link_args);
         key!(link_env, env);
         key!(asm_args, list);
@@ -936,6 +952,8 @@ impl Target {
         key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
         key!(crt_static_respected, bool);
+        key!(crt_included_default, bool);
+        key!(crt_included_respected, bool);
         key!(stack_probes, bool);
         key!(min_global_align, Option<u64>);
         key!(default_codegen_units, Option<u64>);
@@ -1091,10 +1109,13 @@ impl ToJson for Target {
         target_option_val!(is_builtin);
         target_option_val!(linker);
         target_option_val!(link_args - pre_link_args);
+        target_option_val!(link_args - pre_link_args_crt);
         target_option_val!(pre_link_objects_exe);
         target_option_val!(pre_link_objects_dll);
+        target_option_val!(pre_link_objects_exe_crt);
         target_option_val!(link_args - late_link_args);
         target_option_val!(post_link_objects);
+        target_option_val!(post_link_objects_crt);
         target_option_val!(link_args - post_link_args);
         target_option_val!(env - link_env);
         target_option_val!(asm_args);
@@ -1141,6 +1162,8 @@ impl ToJson for Target {
         target_option_val!(crt_static_allows_dylibs);
         target_option_val!(crt_static_default);
         target_option_val!(crt_static_respected);
+        target_option_val!(crt_included_default);
+        target_option_val!(crt_included_respected);
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
         target_option_val!(default_codegen_units);

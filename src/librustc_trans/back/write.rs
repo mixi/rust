@@ -126,6 +126,7 @@ pub fn write_output_file(
 fn target_feature(sess: &Session) -> String {
     let rustc_features = [
         "crt-static",
+        "crt-included",
     ];
     let requested_features = sess.opts.cg.target_feature.split(',');
     let llvm_features = requested_features.filter(|f| {

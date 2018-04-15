@@ -741,6 +741,11 @@ impl Build {
         }
     }
 
+    /// Returns if this target should use the included libc when linking
+    fn crt_included(&self, target: Interned<String>) -> Option<bool> {
+        self.config.target_config.get(&target).and_then(|t| t.crt_included)
+    }
+
     /// Returns the "musl root" for this `target`, if defined
     fn musl_root(&self, target: Interned<String>) -> Option<&Path> {
         self.config.target_config.get(&target)

@@ -162,6 +162,7 @@ pub struct Target {
     pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub crt_static: Option<bool>,
+    pub crt_included: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
     pub no_std: bool,
@@ -320,6 +321,7 @@ struct TomlTarget {
     linker: Option<String>,
     android_ndk: Option<String>,
     crt_static: Option<bool>,
+    crt_included: Option<bool>,
     musl_root: Option<String>,
     qemu_rootfs: Option<String>,
 }
@@ -557,6 +559,7 @@ impl Config {
                 target.ar = cfg.ar.clone().map(PathBuf::from);
                 target.linker = cfg.linker.clone().map(PathBuf::from);
                 target.crt_static = cfg.crt_static.clone();
+                target.crt_included = cfg.crt_included.clone();
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
 

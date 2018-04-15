@@ -235,13 +235,28 @@ fn main() {
             }
         }
 
+        let mut target_features = Vec::new();
+
         if let Ok(s) = env::var("RUSTC_CRT_STATIC") {
             if s == "true" {
-                cmd.arg("-C").arg("target-feature=+crt-static");
+                target_features.push("+crt-static");
             }
             if s == "false" {
-                cmd.arg("-C").arg("target-feature=-crt-static");
+                target_features.push("-crt-static");
             }
+        }
+
+        if let Ok(s) = env::var("RUSTC_CRT_INCLUDED") {
+            if s == "true" {
+                target_features.push("+crt-included");
+            }
+            if s == "false" {
+                target_features.push("-crt-included");
+            }
+        }
+
+        if !target_features.is_empty() {
+            cmd.arg("-C").arg(format!("target-feature={}", target_features.join(",")));
         }
 
         // When running miri tests, we need to generate MIR for all libraries

@@ -15,7 +15,7 @@ pub fn opts() -> TargetOptions {
 
     // Make sure that the linker/gcc really don't pull in anything, including
     // default objects, libs, etc.
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-nostdlib".to_string());
+    base.pre_link_args_crt.insert(LinkerFlavor::Gcc, vec!["-nostdlib".to_string()]);
 
     // At least when this was tested, the linker would not add the
     // `GNU_EH_FRAME` program header to executables generated, which is required
@@ -55,14 +55,20 @@ pub fn opts() -> TargetOptions {
     //
     // Each target directory for musl has these object files included in it so
     // they'll be included from there.
-    base.pre_link_objects_exe.push("crt1.o".to_string());
-    base.pre_link_objects_exe.push("crti.o".to_string());
-    base.post_link_objects.push("crtn.o".to_string());
+    base.pre_link_objects_exe_crt.push("crt1.o".to_string());
+    base.pre_link_objects_exe_crt.push("crti.o".to_string());
+    base.post_link_objects_crt.push("crtn.o".to_string());
 
     // These targets statically link libc by default
     base.crt_static_default = true;
     // These targets allow the user to choose between static and dynamic linking.
     base.crt_static_respected = true;
+
+    // These targets support using an included libc instead of the system one
+    // when linking.
+    base.crt_included_default = true;
+    // These targets can use the libc included with our standard library.
+    base.crt_included_respected = true;
 
     base
 }

@@ -657,6 +657,27 @@ impl Session {
         }
     }
 
+    pub fn crt_included(&self) -> bool {
+        // If the target does not opt in to crt-included support, use its default.
+        if self.target.target.options.crt_included_respected {
+            self.crt_included_feature()
+        } else {
+            self.target.target.options.crt_included_default
+        }
+    }
+
+    pub fn crt_included_feature(&self) -> bool {
+        let requested_features = self.opts.cg.target_feature.split(',');
+        let found_negative = requested_features.clone().any(|r| r == "-crt-included");
+        let found_positive = requested_features.clone().any(|r| r == "+crt-included");
+
+        if self.target.target.options.crt_included_default {
+            !found_negative
+        } else {
+            found_positive
+        }
+    }
+
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         self.opts.debuginfo != DebugInfoLevel::NoDebugInfo
             || !self.target.target.options.eliminate_frame_pointer
