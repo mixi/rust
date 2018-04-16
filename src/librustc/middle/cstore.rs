@@ -210,16 +210,6 @@ pub trait MetadataLoader {
 }
 
 #[derive(Clone)]
-pub struct ExternConstBody<'tcx> {
-    pub body: &'tcx hir::Body,
-
-    // It would require a lot of infrastructure to enable stable-hashing Bodies
-    // from other crates, so we hash on export and just store the fingerprint
-    // with them.
-    pub fingerprint: ich::Fingerprint,
-}
-
-#[derive(Clone)]
 pub struct ExternBodyNestedBodies {
     pub nested_bodies: Lrc<BTreeMap<hir::BodyId, hir::Body>>,
 

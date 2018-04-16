@@ -289,7 +289,7 @@ impl_stable_hash_for!(struct Entry<'tcx> {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum EntryKind<'tcx> {
-    Const(u8),
+    Const(u8, Lazy<ConstData>),
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -313,7 +313,7 @@ pub enum EntryKind<'tcx> {
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
-    AssociatedConst(AssociatedContainer, u8),
+    AssociatedConst(AssociatedContainer, u8, Lazy<ConstData>),
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
@@ -333,8 +333,9 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::Type => {
                 // Nothing else to hash here.
             }
-            EntryKind::Const(qualif) => {
+            EntryKind::Const(qualif, ref const_data) => {
                 qualif.hash_stable(hcx, hasher);
+                const_data.hash_stable(hcx, hasher);
             }
             EntryKind::Enum(ref repr_options) => {
                 repr_options.hash_stable(hcx, hasher);
@@ -375,13 +376,20 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::AssociatedType(associated_container) => {
                 associated_container.hash_stable(hcx, hasher);
             }
-            EntryKind::AssociatedConst(associated_container, qualif) => {
+            EntryKind::AssociatedConst(associated_container, qualif, _) => {
                 associated_container.hash_stable(hcx, hasher);
                 qualif.hash_stable(hcx, hasher);
             }
         }
     }
 }
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct ConstData {
+    pub rendered: String,
+}
+
+impl_stable_hash_for!(struct ConstData { rendered });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ModData {

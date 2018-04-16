@@ -795,7 +795,10 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         let kind = match trait_item.kind {
             ty::AssociatedKind::Const => {
-                EntryKind::AssociatedConst(container, 0)
+                let rendered =
+                    hir::print::to_string(&self.tcx.hir, |s| s.print_trait_item(ast_item));
+                let const_data = self.lazy(&ConstData { rendered });
+                EntryKind::AssociatedConst(container, 0, const_data)
             }
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
@@ -886,8 +889,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         let kind = match impl_item.kind {
             ty::AssociatedKind::Const => {
-                EntryKind::AssociatedConst(container,
-                    self.tcx.at(ast_item.span).mir_const_qualif(def_id).0)
+                if let hir::ImplItemKind::Const(_, body_id) = ast_item.node {
+                    EntryKind::AssociatedConst(container,
+                        self.tcx.at(ast_item.span).mir_const_qualif(def_id).0,
+                        self.encode_const_data_for_body(body_id))
+                } else {
+                    bug!()
+                }
             }
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
@@ -999,6 +1007,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         self.tcx.lookup_deprecation(def_id).map(|depr| self.lazy(&depr))
     }
 
+    fn encode_const_data_for_body(&mut self, body_id: hir::BodyId) -> Lazy<ConstData> {
+        let body = self.tcx.hir.body(body_id);
+        let rendered = hir::print::to_string(&self.tcx.hir, |s| s.print_expr(&body.value));
+        let const_data = &ConstData { rendered };
+        self.lazy(const_data)
+    }
+
     fn encode_info_for_item(&mut self, (def_id, item): (DefId, &'tcx hir::Item)) -> Entry<'tcx> {
         let tcx = self.tcx;
 
@@ -1007,8 +1022,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let kind = match item.node {
             hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
             hir::ItemStatic(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
-            hir::ItemConst(..) => {
-                EntryKind::Const(tcx.at(item.span).mir_const_qualif(def_id).0)
+            hir::ItemConst(_, body_id) => {
+                EntryKind::Const(
+                    tcx.at(item.span).mir_const_qualif(def_id).0,
+                    self.encode_const_data_for_body(body_id)
+                )
             }
             hir::ItemFn(_, _, constness, .., body) => {
                 let data = FnData {
@@ -1346,10 +1364,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_embedded_const({:?})", def_id);
         let tcx = self.tcx;
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
-        let body = tcx.hir.body_owned_by(id);
+        let body_id = tcx.hir.body_owned_by(id);
+        let const_data = self.encode_const_data_for_body(body_id);
 
         Entry {
-            kind: EntryKind::Const(tcx.mir_const_qualif(def_id).0),
+            kind: EntryKind::Const(tcx.mir_const_qualif(def_id).0, const_data),
             visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
@@ -1363,7 +1382,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
-            ast: Some(self.encode_body(body)),
+            ast: Some(self.encode_body(body_id)),
             mir: self.encode_optimized_mir(def_id),
         }
     }
