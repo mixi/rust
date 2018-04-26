@@ -663,8 +663,16 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_CRT_STATIC", x.to_string());
         }
 
+        if let Some(x) = self.crt_static(compiler.host) {
+            cargo.env("RUSTC_HOST_CRT_STATIC", x.to_string());
+        }
+
         if let Some(x) = self.crt_included(target) {
             cargo.env("RUSTC_CRT_INCLUDED", x.to_string());
+        }
+
+        if let Some(x) = self.crt_included(compiler.host) {
+            cargo.env("RUSTC_HOST_CRT_INCLUDED", x.to_string());
         }
 
         // Enable usage of unstable features

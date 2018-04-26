@@ -37,6 +37,17 @@ use std::process::Command;
 use std::str::FromStr;
 use std::time::Instant;
 
+fn target_feature_from_env(var: &str, name: &str, target_features: &mut Vec<String>) {
+    if let Ok(s) = env::var(var) {
+        if s == "true" {
+            target_features.push(format!("+{}", name));
+        }
+        if s == "false" {
+            target_features.push(format!("-{}", name));
+        }
+    }
+}
+
 fn main() {
     let mut args = env::args_os().skip(1).collect::<Vec<_>>();
 
@@ -106,6 +117,8 @@ fn main() {
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
     let mut maybe_crate = None;
+
+    let mut target_features = Vec::new();
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
@@ -235,29 +248,12 @@ fn main() {
             }
         }
 
-        let mut target_features = Vec::new();
-
-        if let Ok(s) = env::var("RUSTC_CRT_STATIC") {
-            if s == "true" {
-                target_features.push("+crt-static");
-            }
-            if s == "false" {
-                target_features.push("-crt-static");
-            }
-        }
-
-        if let Ok(s) = env::var("RUSTC_CRT_INCLUDED") {
-            if s == "true" {
-                target_features.push("+crt-included");
-            }
-            if s == "false" {
-                target_features.push("-crt-included");
-            }
-        }
-
-        if !target_features.is_empty() {
-            cmd.arg("-C").arg(format!("target-feature={}", target_features.join(",")));
-        }
+        target_feature_from_env("RUSTC_CRT_STATIC",
+                                "crt-static",
+                                &mut target_features);
+        target_feature_from_env("RUSTC_CRT_INCLUDED",
+                                "crt-included",
+                                &mut target_features);
 
         // When running miri tests, we need to generate MIR for all libraries
         if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
@@ -276,6 +272,17 @@ fn main() {
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
+
+        target_feature_from_env("RUSTC_HOST_CRT_STATIC",
+                                "crt-static",
+                                &mut target_features);
+        target_feature_from_env("RUSTC_HOST_CRT_INCLUDED",
+                                "crt-included",
+                                &mut target_features);
+    }
+
+    if !target_features.is_empty() {
+        cmd.arg("-C").arg(format!("target-feature={}", target_features.join(",")));
     }
 
     if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
