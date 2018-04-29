@@ -578,6 +578,11 @@ fn link_natively(sess: &Session,
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
         cmd.args(args);
     }
+    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
+        if sess.crt_static() {
+            cmd.args(args);
+        }
+    }
     if let Some(ref args) = sess.opts.debugging_opts.pre_link_args {
         cmd.args(args);
     }
@@ -590,6 +595,12 @@ fn link_natively(sess: &Session,
     };
     for obj in pre_link_objects {
         cmd.arg(root.join(obj));
+    }
+
+    if crate_type == config::CrateTypeExecutable && sess.crt_static() {
+        for obj in &sess.target.target.options.pre_link_objects_exe_crt {
+            cmd.arg(root.join(obj));
+        }
     }
 
     if sess.target.target.options.is_like_emscripten {
@@ -612,6 +623,11 @@ fn link_natively(sess: &Session,
     }
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(root.join(obj));
+    }
+    if sess.crt_static() {
+        for obj in &sess.target.target.options.post_link_objects_crt {
+            cmd.arg(root.join(obj));
+        }
     }
     if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
         cmd.args(args);
